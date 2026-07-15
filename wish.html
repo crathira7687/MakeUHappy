@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Postmark — little notes, sent well</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300..700;1,300..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-bg-1:#1b1428;
+    --ink-bg-2:#2a1d3d;
+    --paper:#faf6ec;
+    --paper-shadow:#e4dcc8;
+    --text-dark:#2b2140;
+    --text-muted:#8478a0;
+    --text-on-dark:#f1ecf9;
+    --text-on-dark-muted:#b7abd1;
+    --gold:#c9a227;
+    --wax:#a63d40;
+    --rose:#d1477a;
+    --teal:#3fa89a;
+    --lavender:#8a7cc9;
+    --radius:18px;
+    --serif: "Fraunces", serif;
+    --sans: "Inter", sans-serif;
+    --mono: "JetBrains Mono", monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink-bg-1);
+    color:var(--text-on-dark);
+    font-family:var(--sans);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  #app{ position:relative; min-height:100vh; width:100%; }
+
+  a{color:inherit;}
+  button{font-family:inherit;}
+  ::selection{ background: var(--gold); color:#1b1428; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001s !important; animation-iteration-count:1 !important; transition-duration:0.001s !important; }
+  }
+
+  .eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+
+  /* ================= COMPOSER ================= */
+  .composer{
+    position:relative;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:64px 20px 80px;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse 800px 480px at 6% -6%, rgba(232,176,75,0.24), transparent 55%),
+      radial-gradient(ellipse 700px 520px at 96% 8%, rgba(166,61,64,0.26), transparent 55%),
+      radial-gradient(ellipse 650px 520px at 50% 108%, rgba(63,168,154,0.20), transparent 55%),
+      radial-gradient(ellipse 520px 420px at 22% 55%, rgba(138,124,201,0.20), transparent 55%),
+      radial-gradient(ellipse 480px 380px at 82% 60%, rgba(209,71,122,0.16), transparent 55%),
+      linear-gradient(160deg, var(--ink-bg-1) 0%, var(--ink-bg-2) 55%, var(--ink-bg-1) 100%);
+  }
+  .garden-fx{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+  .garden-piece{ position:absolute; animation:sway 6s ease-in-out infinite; }
+  @keyframes sway{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-12px) rotate(6deg); } }
+
+  .composer-head{ position:relative; z-index:1; text-align:center; max-width:520px; margin-bottom:34px; }
+  .stamp-mark{
+    width:58px;height:58px; margin:0 auto 20px;
+    border:1.5px dashed rgba(241,236,249,0.35); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stamp-mark svg{ width:26px; height:26px; }
+  .brand{
+    font-family:var(--serif); font-weight:600; font-style:italic;
+    font-size:clamp(38px,6vw,56px); line-height:1.05; margin:0 0 10px;
+    color:var(--text-on-dark);
+  }
+  .tagline{ color:var(--text-on-dark-muted); font-size:15.5px; line-height:1.6; margin:0; }
+  .floral-divider{ width:210px; height:22px; margin:20px auto 0; opacity:.9; }
+
+  .card{
+    position:relative; z-index:1;
+    background:var(--paper); color:var(--text-dark);
+    width:100%; max-width:560px; border-radius:var(--radius);
+    padding:40px 34px 34px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.03);
+  }
+  .card::before{
+    content:""; position:absolute; inset:10px;
+    border:1px solid var(--paper-shadow); border-radius:calc(var(--radius) - 6px);
+    pointer-events:none;
+  }
+  .card-flourish{ position:absolute; width:66px; height:66px; pointer-events:none; z-index:2; }
+  .card-flourish.tl{ top:-16px; left:-16px; transform:rotate(-18deg); }
+  .card-flourish.br{ bottom:-16px; right:-16px; transform:rotate(162deg); }
+
+  .field-label{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-muted); display:block; margin-bottom:9px;
+  }
+  .field{ margin-bottom:22px; }
+
+  .occasion-grid{ display:flex; flex-wrap:wrap; gap:9px; }
+  .occ-pill{
+    border:1.5px solid var(--paper-shadow); background:transparent; color:var(--text-dark);
+    font-family:var(--sans); font-weight:500; font-size:13.5px; padding:9px 15px;
+    border-radius:100px; cursor:pointer; transition:all .18s ease;
+    display:flex; align-items:center; gap:7px;
+  }
+  .occ-pill svg{ width:14px; height:14px; opacity:.75; }
+  .occ-pill:hover{ border-color:var(--occ-color,var(--gold)); }
+  .occ-pill.active{ background:var(--occ-color,var(--gold)); border-color:var(--occ-color,var(--gold)); color:#fff; }
+  .occ-pill.active svg{ opacity:1; }
+
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:480px){ .two-col{ grid-template-columns:1fr; } }
+
+  input[type=text], textarea{
+    width:100%; border:1.5px solid var(--paper-shadow); background:#fff; border-radius:10px;
+    padding:11px 13px; font-family:var(--sans); font-size:14.5px; color:var(--text-dark); resize:vertical;
+  }
+  input[type=text]::placeholder, textarea::placeholder{ color:#b8ae9a; }
+  textarea{ min-height:110px; line-height:1.55; font-family:var(--serif); font-size:16px; }
+
+  .song-field-label-row{ display:flex; align-items:center; gap:6px; }
+  .song-field-label-row svg{ width:12px; height:12px; opacity:.8; }
+
+  .seal-btn{
+    width:100%; margin-top:6px; border:none; border-radius:12px; padding:15px 18px;
+    background:linear-gradient(135deg, var(--wax), #c15a52);
+    color:#fff; font-family:var(--sans); font-weight:600; font-size:15px; letter-spacing:.01em;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:transform .15s ease, box-shadow .15s ease;
+    box-shadow:0 10px 20px -8px rgba(166,61,64,0.55);
+  }
+  .seal-btn:hover{ transform:translateY(-1px); }
+  .seal-btn:active{ transform:translateY(1px) scale(.99); }
+  .seal-btn svg{ width:17px; height:17px; }
+
+  .stamping .seal-btn{ pointer-events:none; }
+  @keyframes stampThud{ 0%{ transform:scale(1); } 35%{ transform:scale(.94) rotate(-1.5deg); } 55%{ transform:scale(1.03) rotate(1deg); } 100%{ transform:scale(1); } }
+  .stamp-anim{ animation:stampThud .5s ease; }
+
+  .result{ margin-top:26px; padding-top:24px; border-top:1px dashed var(--paper-shadow); display:none; }
+  .result.show{ display:block; animation:fadeUp .5s ease; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .link-row{ display:flex; gap:8px; margin-bottom:12px; }
+  .link-row input{ flex:1; font-family:var(--mono); font-size:12.5px; color:var(--text-muted); background:#fff; }
+  .icon-btn{
+    border:1.5px solid var(--paper-shadow); background:#fff; border-radius:10px; padding:0 14px;
+    font-family:var(--sans); font-weight:600; font-size:13px; cursor:pointer; color:var(--text-dark);
+    white-space:nowrap; transition:background .15s ease, color .15s ease;
+  }
+  .icon-btn:hover{ background:var(--text-dark); color:#fff; }
+  .result-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .ghost-btn{
+    flex:1; border:1.5px solid var(--text-dark); background:transparent; color:var(--text-dark);
+    border-radius:10px; padding:11px 14px; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .ghost-btn:hover{ background:var(--text-dark); color:#fff; }
+  .note{ font-size:12px; color:var(--text-muted); margin-top:14px; line-height:1.5; }
+
+  .footer-note{ position:relative; z-index:1; margin-top:34px; color:var(--text-on-dark-muted); font-size:12.5px; text-align:center; max-width:420px; line-height:1.6; }
+
+  /* ================= REVEAL ================= */
+  .reveal{
+    position:relative; min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:40px 20px; overflow:hidden;
+    background:var(--scene-bg);
+  }
+  .scene-fx{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+
+  .env-wrap{ position:relative; z-index:3; display:flex; flex-direction:column; align-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .env-to{ font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-on-dark-muted); margin-bottom:18px; text-align:center; }
+  .envelope{ width:250px; height:168px; position:relative; }
+  .env-body{ position:absolute; inset:0; background:var(--paper); border-radius:8px; box-shadow:0 25px 50px -15px rgba(0,0,0,0.5); overflow:hidden; }
+  .env-body::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:100%;
+    background:
+      linear-gradient(135deg, transparent 49.3%, rgba(0,0,0,0.06) 50%, transparent 50.7%),
+      linear-gradient(-135deg, transparent 49.3%, rgba(0,0,0,0.06) 50%, transparent 50.7%);
+  }
+  .env-flap{
+    position:absolute; top:0; left:0; right:0; height:100px; background:var(--paper);
+    clip-path:polygon(0 0, 100% 0, 50% 78%); transform-origin:top center;
+    transition:transform .6s cubic-bezier(.6,-0.28,.2,1.2);
+    box-shadow:inset 0 -18px 22px -20px rgba(0,0,0,0.35); z-index:2;
+  }
+  .env-seal{
+    position:absolute; top:64px; left:50%; transform:translate(-50%,0); width:46px; height:46px; border-radius:50%;
+    background:var(--scene-accent); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 14px -4px rgba(0,0,0,0.5), inset 0 -4px 6px rgba(0,0,0,0.25), inset 0 3px 4px rgba(255,255,255,0.25);
+    z-index:3; transition:transform .35s ease, opacity .35s ease;
+  }
+  .env-seal svg{ width:20px; height:20px; fill:rgba(255,255,255,0.92); }
+
+  .env-tap{
+    margin-top:20px; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-on-dark-muted); display:flex; align-items:center; gap:8px;
+    animation:pulseTap 2.2s ease-in-out infinite; transition:opacity .3s ease;
+  }
+  @keyframes pulseTap{ 0%,100%{opacity:.55;} 50%{opacity:1;} }
+
+  .envelope.open .env-flap{ transform:rotateX(160deg); }
+  .envelope.open .env-seal{ opacity:0; transform:translate(-50%,0) scale(.4) rotate(25deg); }
+
+  .bouquet-wrap{
+    width:190px; height:200px; margin-bottom:-22px; position:relative; z-index:4; pointer-events:none;
+    opacity:0; transform:translateY(24px) scale(.9);
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  .bouquet-wrap.show{ opacity:1; transform:translateY(0) scale(1); }
+  .bouquet-wrap .flower-g{
+    transform-box:fill-box; transform-origin:center;
+    transform:scale(0) rotate(-10deg);
+    transition:transform .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .bouquet-wrap.show .flower-g{ transform:scale(1) rotate(0deg); }
+
+  .letter{
+    position:relative; z-index:5; width:100%; max-width:480px; background:var(--paper); color:var(--text-dark);
+    border-radius:16px; padding:44px 36px 38px; margin-top:14px;
+    box-shadow:0 40px 70px -20px rgba(0,0,0,0.55);
+    opacity:0; transform:translateY(26px) scale(.97);
+    transition:opacity .55s ease .1s, transform .55s cubic-bezier(.2,.9,.3,1.1) .1s;
+    text-align:center;
+  }
+  .letter.show{ opacity:1; transform:translateY(0) scale(1); }
+  .letter-flourish{ position:absolute; width:48px; height:48px; opacity:.6; pointer-events:none; }
+  .letter-flourish.tl{ top:-12px; left:-12px; transform:rotate(-16deg); }
+  .letter-flourish.br{ bottom:-12px; right:-12px; transform:rotate(164deg); }
+  .letter-eyebrow{ font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--scene-accent); margin-bottom:16px; }
+  .letter-dear{ font-family:var(--serif); font-style:italic; font-weight:500; font-size:22px; color:var(--text-muted); margin:0 0 14px; }
+  .letter-msg{ font-family:var(--serif); font-weight:400; font-size:clamp(19px,3.4vw,24px); line-height:1.5; color:var(--text-dark); margin:0 0 26px; }
+  .letter-sig{ font-family:var(--serif); font-style:italic; font-size:17px; color:var(--text-muted); }
+  .letter-divider{ width:36px; height:1.5px; background:var(--scene-accent); margin:0 auto 22px; opacity:.6; }
+
+  .song-block{ text-align:left; margin:0 0 26px; }
+  .song-label{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--scene-accent); display:flex; align-items:center; justify-content:center; gap:7px;
+    margin-bottom:12px;
+  }
+  .song-label svg{ width:13px; height:13px; }
+  .song-embed{ border-radius:12px; overflow:hidden; box-shadow:0 8px 22px -10px rgba(0,0,0,0.35); }
+  .song-embed iframe{ display:block; width:100%; border:none; }
+  .song-fallback{
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    border:1.5px solid var(--paper-shadow); border-radius:100px; padding:11px 20px;
+    font-weight:600; font-size:13.5px; color:var(--text-dark); text-decoration:none;
+    margin:0 auto; width:fit-content; transition:background .15s ease, color .15s ease;
+  }
+  .song-fallback:hover{ background:var(--text-dark); color:#fff; }
+  .song-fallback svg{ width:15px; height:15px; }
+
+  .send-own{
+    margin-top:28px; z-index:5; position:relative; border:1.5px solid rgba(241,236,249,0.35); background:transparent;
+    color:var(--text-on-dark); padding:12px 22px; border-radius:100px; font-weight:500; font-size:13.5px; cursor:pointer;
+    opacity:0; transition:opacity .5s ease .3s, background .2s ease, border-color .2s ease;
+  }
+  .send-own.show{ opacity:1; }
+  .send-own:hover{ background:rgba(255,255,255,0.08); border-color:rgba(241,236,249,0.6); }
+
+  .fx-piece{ position:absolute; top:-40px; will-change:transform; }
+  .fx-static{ position:absolute; }
+  @keyframes fall{ to{ transform:translateY(115vh) rotate(var(--rot)); } }
+  @keyframes twinkle{ 0%,100%{ opacity:.15; transform:scale(.85); } 50%{ opacity:1; transform:scale(1); } }
+  @keyframes driftBird{ from{ transform:translateX(-10vw) translateY(0); } to{ transform:translateX(110vw) translateY(-30px); } }
+  @keyframes riseSun{ from{ transform:translateY(40px); opacity:.4; } to{ transform:translateY(0); opacity:1; } }
+  @keyframes groundSway{ 0%,100%{ transform:rotate(-4deg); } 50%{ transform:rotate(4deg); } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+
+  /* ---------------- flower helpers ---------------- */
+  function flowerMarkup(cx,cy,r,petalColor,centerColor){
+    let petals='';
+    for(let k=0;k<6;k++){
+      petals += `<ellipse cx="${cx}" cy="${cy-r*0.62}" rx="${r*0.34}" ry="${r*0.48}" fill="${petalColor}" transform="rotate(${k*60} ${cx} ${cy})"/>`;
+    }
+    return `${petals}<circle cx="${cx}" cy="${cy}" r="${r*0.3}" fill="${centerColor}"/>`;
+  }
+  function tinyFlowerSVG(color, size, center){
+    center = center || '#fff8e7';
+    return `<svg viewBox="0 0 20 20" width="${size}" height="${size}"><g>${flowerMarkup(10,10,8,color,center)}</g></svg>`;
+  }
+  function cornerFlourishSVG(c1,c2,leaf){
+    return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+      <path d="M10 90 Q30 70 25 45 Q40 55 50 35" stroke="${leaf}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="34" cy="58" rx="7" ry="13" fill="${leaf}" opacity="0.8" transform="rotate(-25 34 58)"/>
+      <g>${flowerMarkup(25,45,16,c1,'#fff8e7')}</g>
+      <g>${flowerMarkup(50,28,13,c2,'#fff8e7')}</g>
+    </svg>`;
+  }
+  function floralDividerSVG(c1,c2,c3,leaf){
+    return `<svg viewBox="0 0 210 22" width="100%" height="100%">
+      <path d="M2 11 Q52 -2 105 11 T208 11" stroke="${leaf}" stroke-width="1.4" fill="none" opacity="0.55"/>
+      <g>${flowerMarkup(30,11,9,c1,'#fff8e7')}</g>
+      <g>${flowerMarkup(105,11,10,c2,'#fff8e7')}</g>
+      <g>${flowerMarkup(180,11,9,c3,'#fff8e7')}</g>
+    </svg>`;
+  }
+  function bouquetSVG(p){
+    const flowers = [
+      {x:58,y:78,r:24},{x:100,y:50,r:30},{x:142,y:78,r:24},
+      {x:76,y:104,r:19},{x:124,y:104,r:19},{x:100,y:92,r:17}
+    ];
+    const bindX=100, bindY=204;
+    let stems='', blooms='';
+    flowers.forEach((f,i)=>{
+      const c = p.petals[i % p.petals.length];
+      const ctrlX = bindX + (f.x-bindX)*0.5;
+      const ctrlY = f.y + (bindY-f.y)*0.55;
+      stems += `<path d="M${bindX} ${bindY} Q ${ctrlX} ${ctrlY} ${f.x} ${f.y+f.r*0.55}" stroke="${p.leaf}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+      blooms += `<g class="flower-g" style="transition-delay:${i*70}ms">${flowerMarkup(f.x,f.y,f.r,c,p.center)}</g>`;
+    });
+    const leaves = `
+      <path d="M${bindX-14} ${bindY-30} Q ${bindX-40} ${bindY-46} ${bindX-30} ${bindY-70}" stroke="${p.leaf}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${bindX-34}" cy="${bindY-56}" rx="9" ry="16" fill="${p.leaf}" opacity="0.85" transform="rotate(-30 ${bindX-34} ${bindY-56})"/>
+      <path d="M${bindX+14} ${bindY-30} Q ${bindX+42} ${bindY-44} ${bindX+32} ${bindY-68}" stroke="${p.leaf}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${bindX+36}" cy="${bindY-54}" rx="9" ry="16" fill="${p.leaf}" opacity="0.85" transform="rotate(30 ${bindX+36} ${bindY-54})"/>`;
+    const ribbon = `
+      <path d="M${bindX} ${bindY} Q ${bindX-26} ${bindY+2} ${bindX-30} ${bindY+22} Q ${bindX-14} ${bindY+16} ${bindX} ${bindY+10} Z" fill="${p.ribbon}"/>
+      <path d="M${bindX} ${bindY} Q ${bindX+26} ${bindY+2} ${bindX+30} ${bindY+22} Q ${bindX+14} ${bindY+16} ${bindX} ${bindY+10} Z" fill="${p.ribbon}"/>
+      <circle cx="${bindX}" cy="${bindY+3}" r="6" fill="${p.ribbon}"/>
+      <path d="M${bindX-4} ${bindY+8} L${bindX-10} ${bindY+34} L${bindX-2} ${bindY+30} Z" fill="${p.ribbon}" opacity="0.9"/>
+      <path d="M${bindX+4} ${bindY+8} L${bindX+10} ${bindY+34} L${bindX+2} ${bindY+30} Z" fill="${p.ribbon}" opacity="0.9"/>`;
+    return `<svg viewBox="0 0 200 240" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      ${stems}${leaves}${ribbon}${blooms}
+    </svg>`;
+  }
+
+  /* ---------------- song helpers ---------------- */
+  const MUSIC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+
+  // Turns a pasted Spotify / YouTube link into an embeddable player descriptor.
+  // Returns null if the link can't be parsed into an embed (caller falls back to a plain link).
+  function parseSongEmbed(rawUrl){
+    if(!rawUrl) return null;
+    let u;
+    try{ u = new URL(rawUrl); }catch(e){ return null; }
+    const host = u.hostname.replace(/^www\./,'');
+
+    if(host === 'open.spotify.com'){
+      const parts = u.pathname.split('/').filter(Boolean);
+      const types = ['track','album','playlist','episode','show'];
+      const idx = parts.findIndex(p => types.includes(p));
+      if(idx !== -1 && parts[idx+1]){
+        const type = parts[idx];
+        const id = parts[idx+1].split('?')[0];
+        return {
+          provider:'spotify',
+          src:`https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`,
+          height: type==='track' ? 152 : 352
+        };
+      }
+      return null;
+    }
+
+    if(host === 'youtu.be'){
+      const id = u.pathname.slice(1).split('?')[0];
+      if(id) return { provider:'youtube', src:`https://www.youtube.com/embed/${id}`, height:220 };
+      return null;
+    }
+
+    if(host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com'){
+      let id = u.searchParams.get('v');
+      if(!id && u.pathname.startsWith('/embed/')) id = u.pathname.split('/embed/')[1];
+      if(!id && u.pathname.startsWith('/shorts/')) id = u.pathname.split('/shorts/')[1];
+      if(id) return { provider:'youtube', src:`https://www.youtube.com/embed/${id.split('?')[0]}`, height:220 };
+      return null;
+    }
+
+    return null;
+  }
+
+  function songBlockMarkup(songUrl){
+    if(!songUrl) return '';
+    const embed = parseSongEmbed(songUrl);
+    if(embed){
+      return `
+        <div class="song-block">
+          <div class="song-label">${MUSIC_ICON}<span>A song for you</span></div>
+          <div class="song-embed">
+            <iframe src="${embed.src}" height="${embed.height}"
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
+              loading="lazy"></iframe>
+          </div>
+        </div>`;
+    }
+    // Not a recognized embeddable link — offer a plain listen link instead.
+    return `
+      <div class="song-block" style="text-align:center;">
+        <div class="song-label" style="justify-content:center;">${MUSIC_ICON}<span>A song for you</span></div>
+        <a class="song-fallback" href="${escapeAttr(songUrl)}" target="_blank" rel="noopener noreferrer">
+          ${MUSIC_ICON}<span>Listen to the song</span>
+        </a>
+      </div>`;
+  }
+
+  /* ---------------- occasion config ---------------- */
+  const ICONS = {
+    birthday: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 6c-1.2 0-1.2-1.6 0-2.4C13.2 4.4 13.2 6 12 6z"/><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 21h16"/><path d="M4 14c1 1 2 1 3 0s2-1 3 0 2 1 3 0 2-1 3 0 2 1 3 0"/></svg>',
+    anniversary: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="14" r="5"/><circle cx="16" cy="14" r="5"/></svg>',
+    morning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="13" r="4.2"/><path d="M12 4v2M4.5 13h-2M21.5 13h-2M6.3 6.8 5 5.5M17.7 6.8 19 5.5"/><path d="M4 20h16"/></svg>',
+    night: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.4 6.4 0 0 0 10.5 10.5z"/></svg>',
+    other: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.9 5.8L20 10.5l-6.1 1.7L12 18l-1.9-5.8L4 10.5l6.1-1.7L12 3z"/></svg>'
+  };
+  const SEAL_ICONS = {
+    birthday: '<svg viewBox="0 0 24 24"><path d="M12 2c-1.4 1.2-1.4 2.6 0 3.8C13.4 4.6 13.4 3.2 12 2zM6 11h12v2H6zM6 22v-8h12v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/></svg>',
+    anniversary: '<svg viewBox="0 0 24 24"><path d="M9 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6 0a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill-rule="evenodd"/></svg>',
+    morning: '<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="5"/><path d="M12 4v2M5 14H3M21 14h-2M7 8 5.6 6.6M18.4 6.6 17 8" stroke="currentColor" stroke-width="1.6"/></svg>',
+    night: '<svg viewBox="0 0 24 24"><path d="M19 13.5A7 7 0 1 1 10.5 5 5.6 5.6 0 0 0 19 13.5z"/></svg>',
+    other: '<svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z"/></svg>'
+  };
+
+  const BOUQUET_PALETTES = {
+    birthday:   { petals:['#ff6f61','#ffce54','#e84393','#4fd1c5','#a66cff'], leaf:'#3fa34d', ribbon:'#a63d40', center:'#fff3d6' },
+    anniversary:{ petals:['#d1477a','#f2b5c4','#7a2048','#f7dcc6'],            leaf:'#4b7a4e', ribbon:'#b5495b', center:'#fdedeb' },
+    morning:    { petals:['#ffb26b','#ffd166','#ff7f66','#f6e27a'],           leaf:'#6b9b5e', ribbon:'#e8a23a', center:'#fff6e0' },
+    night:      { petals:['#9b8cd9','#7c93c9','#4b3f72','#d6c9f0'],           leaf:'#5c6b9b', ribbon:'#7c93c9', center:'#edeafb' },
+    other:      { petals:['#c9a227','#e8b04b','#7c93c9','#b5495b','#6bbf85'], leaf:'#5b8c5a', ribbon:'#c9a227', center:'#fbf3d9' }
+  };
+
+  const OCCASIONS = {
+    birthday: {
+      label:'Birthday', accent:'#a63d40', accent2:'#e8b04b',
+      sceneBg:'radial-gradient(ellipse 700px 500px at 50% 0%, #3d2140 0%, #241531 55%, #1a1024 100%)',
+      eyebrow:'A birthday wish', dear:(to)=>`Dear ${to||'you'},`, fx:'confetti',
+      defaultMsg:(to)=>`Happy birthday${to? ', '+to:''}! Hope your day is loud with cake, kind people, and at least one really good song.`
+    },
+    anniversary: {
+      label:'Anniversary', accent:'#b5495b', accent2:'#d8b4a0',
+      sceneBg:'radial-gradient(ellipse 700px 500px at 50% 0%, #3a1f30 0%, #24141f 55%, #1a1024 100%)',
+      eyebrow:'An anniversary note', dear:(to)=>`Dear ${to||'you'},`, fx:'petals',
+      defaultMsg:(to)=>`Happy anniversary${to? ', '+to:''}. Here's to another year of choosing each other, on the easy days and the hard ones.`
+    },
+    morning: {
+      label:'Good Morning', accent:'#e8a23a', accent2:'#f2c6a0',
+      sceneBg:'linear-gradient(180deg, #2a2050 0%, #6b3f5e 45%, #d97a52 75%, #f2c56a 100%)',
+      eyebrow:'A morning hello', dear:(to)=>`Good morning${to? ', '+to:''},`, fx:'sunrise',
+      defaultMsg:(to)=>`Good morning${to? ', '+to:''}. Wishing you a slow coffee, easy traffic, and a day that's kinder than yesterday.`
+    },
+    night: {
+      label:'Good Night', accent:'#7c93c9', accent2:'#d6c9f0',
+      sceneBg:'radial-gradient(ellipse 900px 700px at 50% 10%, #1d2547 0%, #12162e 50%, #0a0c1c 100%)',
+      eyebrow:'A goodnight note', dear:(to)=>`Dear ${to||'you'},`, fx:'stars',
+      defaultMsg:(to)=>`Good night${to? ', '+to:''}. Rest well — tomorrow can wait until morning.`
+    },
+    other: {
+      label:'Just Because', accent:'#c9a227', accent2:'#f0e6c8',
+      sceneBg:'radial-gradient(ellipse 700px 500px at 50% 0%, #2a1d3d 0%, #1f1730 55%, #1a1024 100%)',
+      eyebrow:'Just because', dear:(to)=>`Dear ${to||'you'},`, fx:'sparkle',
+      defaultMsg:(to)=>`Just a little note to say I'm thinking of you${to? ', '+to:''}. No reason. That's the whole point.`
+    }
+  };
+
+  const app = document.getElementById('app');
+
+  /* ---------------- encode / decode ---------------- */
+  function encodeData(obj){
+    const json = JSON.stringify(obj);
+    return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function decodeData(str){
+    try{
+      let s = str.replace(/-/g,'+').replace(/_/g,'/');
+      while(s.length % 4) s += '=';
+      const json = decodeURIComponent(escape(atob(s)));
+      return JSON.parse(json);
+    }catch(e){ return null; }
+  }
+
+  /* ---------------- router ---------------- */
+  function render(){
+    const hash = window.location.hash.replace(/^#/,'');
+    if(hash){
+      const data = decodeData(hash);
+      if(data && data.o && OCCASIONS[data.o]){ renderReveal(data); return; }
+    }
+    renderComposer();
+  }
+  window.addEventListener('hashchange', render);
+  render();
+
+  /* ================= COMPOSER ================= */
+  function renderComposer(){
+    let selected = 'birthday';
+
+    app.innerHTML = `
+      <div class="composer">
+        <div class="garden-fx" id="gardenFx"></div>
+        <div class="composer-head">
+          <div class="stamp-mark">${SEAL_ICONS.other.replace('<svg ', '<svg style="color:#f1ecf9" ')}</div>
+          <h1 class="brand">Postmark</h1>
+          <p class="tagline">Write something, seal it, send the link — a little bouquet (and a song, if you like) comes tucked inside every wish.</p>
+          <div class="floral-divider">${floralDividerSVG('#e8b04b','#d1477a','#3fa89a','#8a7cc9')}</div>
+        </div>
+
+        <div class="card">
+          <div class="card-flourish tl">${cornerFlourishSVG('#e8b04b','#d1477a','#3fa89a')}</div>
+          <div class="card-flourish br">${cornerFlourishSVG('#8a7cc9','#a63d40','#3fa89a')}</div>
+
+          <div class="field">
+            <span class="field-label">Occasion</span>
+            <div class="occasion-grid" id="occGrid"></div>
+          </div>
+
+          <div class="two-col">
+            <div class="field">
+              <span class="field-label">To</span>
+              <input type="text" id="toName" placeholder="Their name">
+            </div>
+            <div class="field">
+              <span class="field-label">From</span>
+              <input type="text" id="fromName" placeholder="Your name">
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Message <span style="opacity:.6">(optional — we'll write one if you leave it blank)</span></span>
+            <textarea id="msgBox" placeholder=""></textarea>
+          </div>
+
+          <div class="field">
+            <span class="field-label song-field-label-row">${MUSIC_ICON}<span>Dedicate a song <span style="opacity:.6; text-transform:none; letter-spacing:normal; font-family:var(--sans);">(optional)</span></span></span>
+            <input type="text" id="songUrl" placeholder="Paste a Spotify or YouTube link">
+          </div>
+
+          <button class="seal-btn" id="sealBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>
+            Seal it up
+          </button>
+
+          <div class="result" id="result">
+            <span class="field-label">Your link</span>
+            <div class="link-row">
+              <input type="text" id="linkOut" readonly>
+              <button class="icon-btn" id="copyBtn">Copy</button>
+            </div>
+            <div class="result-actions">
+              <button class="ghost-btn" id="previewBtn">Preview it</button>
+            </div>
+            <p class="note">Anyone who opens this link watches the envelope open, flowers and all — no account needed on their end.</p>
+          </div>
+        </div>
+
+        <p class="footer-note">Everything lives inside the link itself — nothing is stored on a server, so the exact words (and blooms, and song) you pick are exactly what they'll see.</p>
+      </div>
+    `;
+
+    buildGardenFx(document.getElementById('gardenFx'));
+
+    const grid = document.getElementById('occGrid');
+    Object.keys(OCCASIONS).forEach(key=>{
+      const o = OCCASIONS[key];
+      const pill = document.createElement('button');
+      pill.type='button';
+      pill.className = 'occ-pill' + (key===selected ? ' active':'');
+      pill.style.setProperty('--occ-color', o.accent);
+      pill.innerHTML = ICONS[key] + '<span>'+o.label+'</span>';
+      pill.addEventListener('click', ()=>{
+        selected = key;
+        [...grid.children].forEach(c=>c.classList.remove('active'));
+        pill.classList.add('active');
+        refreshPlaceholder();
+      });
+      grid.appendChild(pill);
+    });
+
+    const msgBox = document.getElementById('msgBox');
+    const toInput = document.getElementById('toName');
+    function refreshPlaceholder(){
+      if(!msgBox.dataset.touched){ msgBox.placeholder = OCCASIONS[selected].defaultMsg(toInput.value.trim()); }
+    }
+    refreshPlaceholder();
+    toInput.addEventListener('input', refreshPlaceholder);
+    msgBox.addEventListener('input', ()=>{ msgBox.dataset.touched = msgBox.value.trim() ? '1':''; });
+
+    const card = document.querySelector('.card');
+    const sealBtn = document.getElementById('sealBtn');
+    const result = document.getElementById('result');
+    const linkOut = document.getElementById('linkOut');
+
+    sealBtn.addEventListener('click', ()=>{
+      const to = toInput.value.trim();
+      const from = document.getElementById('fromName').value.trim();
+      const msg = msgBox.value.trim() || OCCASIONS[selected].defaultMsg(to);
+      const songUrl = document.getElementById('songUrl').value.trim();
+      const data = { o:selected, t:to, f:from, m:msg };
+      if(songUrl) data.s = songUrl;
+      const encoded = encodeData(data);
+      const url = window.location.origin + window.location.pathname + '#' + encoded;
+
+      card.classList.add('stamping');
+      sealBtn.classList.add('stamp-anim');
+      setTimeout(()=>{
+        sealBtn.classList.remove('stamp-anim');
+        card.classList.remove('stamping');
+        linkOut.value = url;
+        result.classList.add('show');
+        result.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }, 480);
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', (e)=>{
+      linkOut.select();
+      const btn = e.currentTarget;
+      const done = ()=>{ btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy', 1600); };
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(linkOut.value).then(done).catch(()=>{ document.execCommand('copy'); done(); });
+      } else { document.execCommand('copy'); done(); }
+    });
+
+    document.getElementById('previewBtn').addEventListener('click', ()=>{
+      window.location.hash = linkOut.value.split('#')[1];
+    });
+  }
+
+  function buildGardenFx(container){
+    const colors = ['#e8b04b','#a63d40','#3fa89a','#8a7cc9','#d1477a'];
+    for(let i=0;i<16;i++){
+      const el = document.createElement('div');
+      el.className = 'garden-piece';
+      const size = 16 + Math.random()*16;
+      el.style.left = (Math.random()*94)+'%';
+      el.style.top = (Math.random()*94)+'%';
+      el.style.opacity = (0.35 + Math.random()*0.35).toFixed(2);
+      el.style.animationDuration = (5+Math.random()*4)+'s';
+      el.style.animationDelay = (Math.random()*4)+'s';
+      el.innerHTML = tinyFlowerSVG(colors[i % colors.length], size);
+      container.appendChild(el);
+    }
+  }
+
+  /* ================= REVEAL ================= */
+  function renderReveal(data){
+    const o = OCCASIONS[data.o];
+    const palette = BOUQUET_PALETTES[data.o];
+    const to = (data.t||'').trim();
+    const from = (data.f||'').trim();
+    const msg = data.m || o.defaultMsg(to);
+
+    app.innerHTML = `
+      <div class="reveal" style="--scene-bg:${o.sceneBg}; --scene-accent:${o.accent}; background:var(--scene-bg);">
+        <div class="scene-fx" id="sceneFx"></div>
+
+        <div class="env-wrap" id="envWrap" role="button" tabindex="0" aria-label="Open the envelope">
+          <div class="env-to">${to ? 'To ' + escapeHtml(to) : 'For you'}</div>
+          <div class="envelope" id="envelope">
+            <div class="env-flap"></div>
+            <div class="env-body"></div>
+            <div class="env-seal">${SEAL_ICONS[data.o]}</div>
+          </div>
+          <div class="env-tap" id="tapHint"><span>Tap to open</span></div>
+        </div>
+
+        <div class="bouquet-wrap" id="bouquetWrap">${bouquetSVG(palette)}</div>
+
+        <div class="letter" id="letter">
+          <div class="letter-flourish tl">${cornerFlourishSVG(palette.petals[0], palette.petals[1], palette.leaf)}</div>
+          <div class="letter-flourish br">${cornerFlourishSVG(palette.petals[2 % palette.petals.length], palette.petals[0], palette.leaf)}</div>
+          <div class="letter-eyebrow">${o.eyebrow}</div>
+          <div class="letter-divider"></div>
+          <p class="letter-dear">${escapeHtml(o.dear(to))}</p>
+          <p class="letter-msg">${escapeHtml(msg)}</p>
+          ${songBlockMarkup(data.s)}
+          ${from ? `<p class="letter-sig">— ${escapeHtml(from)}</p>` : ''}
+        </div>
+
+        <button class="send-own" id="sendOwn">Send one of your own →</button>
+      </div>
+    `;
+
+    buildFx(document.getElementById('sceneFx'), o.fx, palette);
+
+    const envWrap = document.getElementById('envWrap');
+    const envelope = document.getElementById('envelope');
+    const bouquetWrap = document.getElementById('bouquetWrap');
+    const letter = document.getElementById('letter');
+    const tapHint = document.getElementById('tapHint');
+    const sendOwn = document.getElementById('sendOwn');
+
+    function openEnvelope(){
+      if(envelope.classList.contains('open')) return;
+      envelope.classList.add('open');
+      tapHint.style.opacity = '0';
+      setTimeout(()=>{ bouquetWrap.classList.add('show'); }, 200);
+      setTimeout(()=>{ letter.classList.add('show'); sendOwn.classList.add('show'); }, 540);
+    }
+    envWrap.addEventListener('click', openEnvelope);
+    envWrap.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openEnvelope(); } });
+    sendOwn.addEventListener('click', ()=>{ window.location.hash = ''; });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function escapeAttr(str){
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ---------------- scene effects ---------------- */
+  function buildFx(container, type, palette){
+    const colors = palette.petals;
+    if(type === 'confetti'){
+      for(let i=0;i<40;i++){
+        const el = document.createElement('div');
+        el.className = 'fx-piece';
+        el.style.left = Math.random()*100 + 'vw';
+        el.style.setProperty('--rot', (Math.random()>0.5?1:-1)*(360+Math.random()*360)+'deg');
+        const dur = 4 + Math.random()*4;
+        const delay = Math.random()*5;
+        el.style.animation = `fall ${dur}s linear ${delay}s infinite`;
+        const color = colors[Math.floor(Math.random()*colors.length)];
+        if(Math.random() < 0.34){
+          const size = 14 + Math.random()*8;
+          el.innerHTML = tinyFlowerSVG(color, size, palette.center);
+        } else {
+          const size = 6 + Math.random()*6;
+          const isRound = Math.random() > .5;
+          el.style.width = size+'px';
+          el.style.height = (isRound? size : size*1.6)+'px';
+          el.style.background = color;
+          el.style.borderRadius = isRound ? '50%' : '2px';
+        }
+        container.appendChild(el);
+      }
+    } else if(type === 'petals'){
+      for(let i=0;i<26;i++){
+        const el = document.createElement('div');
+        el.className = 'fx-piece';
+        el.style.left = Math.random()*100 + 'vw';
+        el.style.setProperty('--rot', (Math.random()>0.5?1:-1)*(180+Math.random()*180)+'deg');
+        const dur = 7 + Math.random()*5;
+        const delay = Math.random()*6;
+        el.style.animation = `fall ${dur}s ease-in ${delay}s infinite`;
+        const color = colors[Math.floor(Math.random()*colors.length)];
+        if(Math.random() < 0.3){
+          el.innerHTML = tinyFlowerSVG(color, 13+Math.random()*7, palette.center);
+        } else {
+          const size = 10 + Math.random()*8;
+          el.style.width = size+'px';
+          el.style.height = size*0.75+'px';
+          el.style.background = color;
+          el.style.borderRadius = '0 100% 0 100%';
+          el.style.opacity = 0.8;
+        }
+        container.appendChild(el);
+      }
+    } else if(type === 'stars'){
+      for(let i=0;i<50;i++){
+        const el = document.createElement('div');
+        el.className = 'fx-piece';
+        const size = 1.5 + Math.random()*2.2;
+        el.style.left = Math.random()*100 + 'vw';
+        el.style.top = Math.random()*70 + 'vh';
+        el.style.width = size+'px';
+        el.style.height = size+'px';
+        el.style.borderRadius = '50%';
+        el.style.background = '#f1ecf9';
+        el.style.animation = `twinkle ${2+Math.random()*3}s ease-in-out ${Math.random()*3}s infinite`;
+        container.appendChild(el);
+      }
+      const moon = document.createElement('div');
+      moon.style.position='absolute'; moon.style.top='9%'; moon.style.right='12%';
+      moon.style.width='54px'; moon.style.height='54px'; moon.style.borderRadius='50%';
+      moon.style.background = '#e8e3f5';
+      moon.style.boxShadow = '0 0 40px 10px rgba(232,227,245,0.35), inset -14px -4px 0 0 rgba(10,12,28,0.9)';
+      container.appendChild(moon);
+      appendGroundFlowers(container, colors, palette);
+    } else if(type === 'sunrise'){
+      const sun = document.createElement('div');
+      sun.style.position='absolute'; sun.style.left='50%'; sun.style.bottom='8%'; sun.style.transform='translateX(-50%)';
+      sun.style.width='160px'; sun.style.height='160px'; sun.style.borderRadius='50%';
+      sun.style.background = `radial-gradient(circle, ${colors[1]} 0%, ${colors[0]} 70%)`;
+      sun.style.boxShadow = `0 0 90px 30px rgba(232,162,58,0.35)`;
+      sun.style.animation = 'riseSun 2.4s ease-out';
+      container.appendChild(sun);
+      for(let i=0;i<3;i++){
+        const bird = document.createElement('div');
+        bird.className='fx-piece';
+        bird.style.top = (15+Math.random()*20)+'vh';
+        bird.style.left='0';
+        bird.style.opacity='0.55';
+        bird.innerHTML = `<svg viewBox="0 0 20 10" width="18" height="10"><path d="M0 5 Q5 0 10 5 Q15 0 20 5" fill="none" stroke="#2a1d3d" stroke-width="1.4"/></svg>`;
+        bird.style.animation = `driftBird ${14+Math.random()*8}s linear ${Math.random()*10}s infinite`;
+        container.appendChild(bird);
+      }
+      appendGroundFlowers(container, colors, palette);
+    } else {
+      for(let i=0;i<30;i++){
+        const el = document.createElement('div');
+        el.className = 'fx-piece';
+        el.style.left = Math.random()*100 + 'vw';
+        el.style.top = Math.random()*90 + 'vh';
+        el.style.animation = `twinkle ${2+Math.random()*3}s ease-in-out ${Math.random()*3}s infinite`;
+        const color = colors[Math.floor(Math.random()*colors.length)];
+        if(Math.random() < 0.4){
+          el.innerHTML = tinyFlowerSVG(color, 10+Math.random()*6, palette.center);
+        } else {
+          const size = 2 + Math.random()*2.5;
+          el.style.width = size+'px';
+          el.style.height = size+'px';
+          el.style.borderRadius = '50%';
+          el.style.background = color;
+        }
+        container.appendChild(el);
+      }
+    }
+  }
+
+  function appendGroundFlowers(container, colors, palette){
+    for(let i=0;i<9;i++){
+      const el = document.createElement('div');
+      el.className = 'fx-static';
+      el.style.left = (4 + i*11 + Math.random()*4) + '%';
+      el.style.bottom = (1 + Math.random()*3) + '%';
+      el.style.transformOrigin = 'bottom center';
+      el.style.animation = `groundSway ${4+Math.random()*3}s ease-in-out ${Math.random()*2}s infinite`;
+      el.innerHTML = tinyFlowerSVG(colors[i % colors.length], 16+Math.random()*10, palette.center);
+      container.appendChild(el);
+    }
+  }
+
+})();
+</script>
+</body>
+</html>
